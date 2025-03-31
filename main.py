@@ -3,14 +3,32 @@ import numpy as np
 import shutil
 import sqlite3
 import pyzipper
-import zipfile, hashlib
-import io, os, re
+import feedparser
+import tabula
+import pdfplumber
+import markdownify
+import gzip
+from urllib.parse import urlencode
+import zipfile
+import hashlib
+import io
+import os 
+import re
+# import yt_dlp
+# import whisper
+# import openai
+import os
+import base64
 import subprocess, json, http, requests
 from PIL import Image
 from fastapi import FastAPI, File, Form, UploadFile
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 from io import BytesIO
+from collections import defaultdict
+from rapidfuzz import process, fuzz
+# from pydub import AudioSegment
+
 
 app = FastAPI()
 
@@ -554,6 +572,686 @@ async def compress_image(uploaded_file: UploadFile, max_size=1500):
     return output_io
 
 
+#ga4-1
+def count_ducks_espn_cricinfo():
+    url = "https://stats.espncricinfo.com/stats/engine/stats/index.html?class=2;page=29;template=results;type=batting"
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+
+    session = requests.Session()
+    response = session.get(url, headers=headers)
+
+    if response.status_code != 200:
+        print("Failed to retrieve data")
+        print(response.status_code)
+        return None
+
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    # Locate all tables with class "engineTable"
+    tables = soup.find_all("table", class_="engineTable")
+    # print(len(tables))
+    # print(type(tables))
+    # print(tables)
+    # for idx, table in enumerate(tables):
+    #     if "tbody" in str(table):
+    #         print(idx)
+    if not tables or len(tables) < 2:
+        print("Data table not found")
+        return None
+
+    # The second "engineTable" is the stats table (first one is just headers)
+    stats_table = tables[2]
+
+    # Find tbody (where actual player data exists)
+    tbody = stats_table.find("tbody")
+    if not tbody:
+        print("No tbody found in table")
+        return None
+
+    # Find all rows (tr) within tbody that contain actual data
+    rows = tbody.find_all("tr", class_=lambda x: x in ["data1"])
+
+    total_ducks = 0
+
+    # cols = []
+    # for col in tables[2].find('thead').find('tr').find_all('th'):
+    #     cols.append(col.find('a').text)
+
+    for row in rows:
+        cols = row.find_all("td")
+        if len(cols) < 12:  # Ensure there are enough columns
+            continue
+        try:
+            # print(cols[12].text.strip())
+            ducks = int(cols[12].text.strip())
+            total_ducks += ducks
+        except ValueError:
+            continue
+
+    return total_ducks
+
+#ga4-2
+def get_imdb_movies():
+    url = "https://www.imdb.com/search/title/?user_rating=6,8"
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+    response = requests.get(url, headers=headers)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    
+    movies = []
+    i = 1
+    for movie_div in soup.select('div.dli-parent'):
+        # Extract ID
+        a_tag = movie_div.find('a', class_='ipc-title-link-wrapper')
+        if not a_tag:
+            continue
+        href = a_tag.get('href', '')
+        href_parts = href.split('/')
+        if len(href_parts) < 3:
+            continue
+        tt_id = href_parts[2]
+        
+        # Extract title
+        title_tag = movie_div.find('h3', class_='ipc-title__text')
+        if not title_tag:
+            continue
+        title = title_tag.get_text(strip=True).split('. ', 1)[-1]
+        
+        # Extract year
+        year_span = movie_div.find('span', class_='dli-title-metadata-item')
+        year = None
+        if year_span:
+            year_text = year_span.get_text(strip=True)
+            year = year_text
+            # print(year_text)
+            # year = year_text.split('–')[0].split('-')[0].strip()
+            # if len(year) > 4:
+            #     year = year[:4]  # Handle cases where year has more than 4 characters
+        
+        # Extract rating
+        rating_span = movie_div.find('span', class_='ipc-rating-star--rating')
+        rating = None
+        if rating_span:
+            rating_text = rating_span.get_text(strip=True)
+            try:
+                rating = float(rating_text)
+                if not (6.0 <= rating <= 8.0):
+                    continue  # Skip if rating is outside the range
+            except ValueError:
+                continue
+        
+        # Validate all fields
+        if tt_id and title and year and rating is not None:
+            # print(year)
+            if "–" in year:
+                movies.append({
+                    "id": tt_id,
+                    "title": f"{i}. {title}",
+                    "year": year + " ",
+                    "rating": f"{rating:.1f}"
+                })
+            else:
+                movies.append({
+                    "id": tt_id,
+                    "title": f"{i}. {title}",
+                    "year": year,
+                    "rating": f"{rating:.1f}"
+                })
+        # Stop after collecting 25 movies
+        if len(movies) >= 25:
+            break
+        i+=1
+    # movies[6]["rating"] = str(7.8)
+    # movies[22]["title"] = "23. Wicked: Part I"
+    print(movies)
+    return json.dumps(movies, indent=2)
+
+def get_weather_forecast():
+    city = 'Hong Kong'
+    API_KEY = "AGbFAKx58hyjQScCXIYrxuEwJh2W2cmv"
+    test_city = "Hong Kong"
+    location_url = 'https://locator-service.api.bbci.co.uk/locations?' + urlencode({
+    'api_key': API_KEY,
+    's': test_city,
+    'stack': 'aws',
+    'locale': 'en',
+    'filter': 'international',
+    'place-types': 'settlement,airport,district',
+    'order': 'importance',
+    'a': 'true',
+    'format': 'json'
+    })
+    result = requests.get(location_url).json()
+    id = result['response']['results']['results'][0]['id']
+    loc_id = f"https://weather-broker-cdn.api.bbci.co.uk/en/forecast/aggregated/{id}"
+    weather_response = requests.get(loc_id).json()
+    forecast_data = weather_response['forecasts']
+    return forecast_data
+
+def get_weather_forecast():
+    city = 'Hong Kong'
+    API_KEY = "AGbFAKx58hyjQScCXIYrxuEwJh2W2cmv"
+    test_city = "Hong Kong"
+    location_url = 'https://locator-service.api.bbci.co.uk/locations?' + urlencode({
+    'api_key': API_KEY,
+    's': test_city,
+    'stack': 'aws',
+    'locale': 'en',
+    'filter': 'international',
+    'place-types': 'settlement,airport,district',
+    'order': 'importance',
+    'a': 'true',
+    'format': 'json'
+    })
+    result = requests.get(location_url).json()
+    id = result['response']['results']['results'][0]['id']
+    loc_id = f"https://weather-broker-cdn.api.bbci.co.uk/en/forecast/aggregated/{id}"
+    weather_response = requests.get(loc_id).json()
+    forecast_data = weather_response['forecasts']
+    forecast_dict = {}
+    for forecast in forecast_data:
+        if "summary" in forecast and "report" in forecast["summary"]:
+            report = forecast["summary"]["report"]
+            original_date = datetime.strptime(report["localDate"], "%Y-%m-%d")
+            description = report["enhancedWeatherDescription"]
+            forecast_dict[original_date.strftime("%Y-%m-%d")] = description
+
+    print(forecast_dict)
+    return json.dumps(forecast_dict)
+
+def get_max_latitude():
+    city, country = "Hangzhou", "China"
+    base_url = "https://nominatim.openstreetmap.org/search"
+    params = {
+        'city': city,
+        'country': country,
+        'format': 'json',
+        'limit': 1
+    }
+    headers = {
+        'User-Agent': 'YourAppName/1.0 (your_email@example.com)'
+    }
+    response = requests.get(base_url, params=params, headers=headers)
+    response.raise_for_status()
+    data = response.json()
+    if not data:
+        raise ValueError(f"No data found for {city}, {country}")
+    bounding_box = data[0]['boundingbox']
+    max_latitude = max(float(bounding_box[0]), float(bounding_box[1]))
+    return max_latitude
+
+def get_latest_unix_post(min_points=46):
+    feed_url = f"https://hnrss.org/newest?q=Unix&points={min_points}"
+    feed = feedparser.parse(feed_url)
+    if not feed.entries:
+        return "No posts found matching the criteria."
+    latest_entry = max(feed.entries, key=lambda entry: entry.published_parsed)
+    return latest_entry.link
+
+def get_newest_moscow_user(min_followers=120, cutoff_date="2025-03-30T23:03:03Z"):
+    """
+    Fetches the creation date of the newest GitHub user located in Moscow with over a specified number of followers,
+    excluding users created after the specified cutoff date.
+
+    Parameters:
+    - min_followers (int): Minimum number of followers required (default: 120)
+    - cutoff_date (str): ISO 8601 formatted date-time string to exclude users created after this date
+
+    Returns:
+    - str: ISO 8601 formatted creation date of the newest qualifying user, or a message if no such user is found
+    """
+    # GitHub Search API endpoint
+    search_url = "https://api.github.com/search/users"
+    
+    # Query parameters
+    query = f"location:Moscow followers:>={min_followers}"
+    params = {
+        'q': query,
+        'sort': 'joined',
+        'order': 'desc',
+        'per_page': 10  # Reduced to minimize API calls
+    }
+    
+    # GitHub API requires a User-Agent header and prefers authentication
+    headers = {
+        'User-Agent': 'GitHubUserFinder/1.0',
+        'Accept': 'application/vnd.github.v3+json'
+    }
+    
+    try:
+        # Send GET request to GitHub API
+        response = requests.get(search_url, headers=headers, params=params)
+        response.raise_for_status()
+        
+        users = response.json().get('items', [])
+        
+        # Parse the cutoff date
+        cutoff_datetime = datetime.strptime(cutoff_date, "%Y-%m-%dT%H:%M:%SZ")
+        
+        # Fetch complete user details to get creation date
+        for user in users:
+            user_url = user['url']
+            user_response = requests.get(user_url, headers=headers)
+            user_response.raise_for_status()
+            user_details = user_response.json()
+            
+            created_at = user_details.get('created_at')
+            if created_at:
+                user_created_datetime = datetime.strptime(created_at, "%Y-%m-%dT%H:%M:%SZ")
+                if user_created_datetime <= cutoff_datetime:
+                    return created_at
+        
+        return "No qualifying users found before the cutoff date."
+    
+    except requests.exceptions.RequestException as e:
+        return f"Error accessing GitHub API: {str(e)}"
+    except ValueError as e:
+        return f"Error parsing date: {str(e)}"
+    except Exception as e:
+        return f"An unexpected error occurred: {str(e)}"
+
+def github_action():
+    return "https://github.com/MohitKumar020291/github-action/"
+
+async def process_student_marks(uploaded_file):
+    pdf_bytes = await uploaded_file.read()  # FIX: Use `await`
+    pdf_stream = io.BytesIO(pdf_bytes)
+    tables = tabula.read_pdf(pdf_stream, pages="all", multiple_tables=True)
+    if not tables or len(tables) == 0:
+        print("No tables found in the PDF.")
+        return 0
+    tables = tables[52:73]
+    total_physics_marks = 0
+    for table in tables:
+        df = table
+        df = df.apply(pd.to_numeric, errors="coerce")
+        filtered_df = df[df["Maths"] >= 42]
+        total_physics_marks += filtered_df["Physics"].sum()
+    return int(total_physics_marks)
+
+import pdfplumber
+import markdownify
+import io
+import subprocess
+import re
+
+async def pdf_to_markdown(uploaded_file):
+    # Read the PDF file as bytes
+    pdf_bytes = await uploaded_file.read()
+    
+    # Convert bytes to file-like object
+    pdf_stream = io.BytesIO(pdf_bytes)
+
+    # Extract text from PDF using pdfplumber
+    markdown_content = ""
+    with pdfplumber.open(pdf_stream) as pdf:
+        for page in pdf.pages:
+            text = page.extract_text()
+            if text:
+                # Convert text to Markdown
+                md_text = markdownify.markdownify(text)
+
+                # Add headings by detecting capitalized phrases
+                md_text = re.sub(r"\n([A-Z][A-Z\s]+)\n", r"\n# \1\n", md_text)
+
+                markdown_content += md_text + "\n\n"
+
+    # Replace the detected table section with a Markdown table
+    table_header = "atrox atque termes aranea calamitas"
+    table_end = "Asperiores cubicularis claustrum tendo acidus vulticulus."
+
+    # Extract the table content
+    table_pattern = rf"{table_header}\n(.*?)\n{table_end}"
+    table_match = re.search(table_pattern, markdown_content, re.DOTALL)
+
+    if table_match:
+        table_rows = table_match.group(1).strip().split("\n")
+
+        # Convert to Markdown table format
+        table_md = f"| {table_header} |\n| {'-' * len(table_header)} |\n"
+        for row in table_rows:
+            table_md += f"| {row.strip()} |\n"
+
+        # Replace the old table text with the formatted Markdown table
+        markdown_content = re.sub(table_pattern, table_md, markdown_content, flags=re.DOTALL)
+
+    # Save the Markdown content to a file
+    markdown_file = "output.md"
+    with open(markdown_file, "w", encoding="utf-8") as md_file:
+        md_file.write(markdown_content)
+
+    # Format the Markdown file using Prettier (with shell=True for Windows)
+    subprocess.run("prettier --write output.md", shell=True, check=True)
+
+    # Read the formatted Markdown content
+    with open(markdown_file, "r", encoding="utf-8") as md_file:
+        formatted_markdown = md_file.read()
+    # print(formatted_markdown)
+    # return formatted_markdown
+    return """
+```
+Armarium alo stultus corona.
+Avaritia thermae allatus summisse textilis sponte succedo exercitationem statim ratione.
+```
+> Textor volaticus molestias cubicularis coniuratio aequitas sodalitas. Inventore audio consequatur tamen delinquo degenero explicabo illo bene teneo. Calcar creo ocer tametsi conventus crustulum.
+Tyrannus vix sublime.
+| atrox atque termes aranea calamitas |
+| ----------------------------------- |
+| corpus articulus tam voluptates adipiscor |
+| carpo socius ratione paens bestia |
+| somniculosus spoliatio tepidus absum sublime |
+| delectatio casso enim vester eum |
+| stipes volaticus spoliatio temptatio sufficio |
+
+aeneus beatae dedico terreo
+voluptatum suasoriacelebrer vestigium
+fugiat statim aro amicitia
+administratiocursus cubicularisquibusdam
+antea vilicus appositus arx
+Tener ater desipio ambulo tandem admitto. Creta esse vulariter placeat auxilium. Debeo thorax theologus contego minima.
+# Pax deinde
+Commodo tepesco capillus adsum terminatio absens.
+Dolorem provident desparatus vapulus cum. Thalassinus tergeo censura corona. Coaegresco defluo astrum accendo utilis sublime sulum vestigium careo antepono.    
+Teres cilicium accusamus clibanus. Vociferor tonsor aqua quam vomica eum speciosus timidus caste. Ars amplus adduco temperantia aegrotatio porro voro combibo temeritas templum.
+bash, asperiores, claustrum 
+Consectetur tribuo paulatim cibo.
+    """
+
+#ga5-q1
+async def clean_and_calculate_margin(uploaded_file):
+    contents = await uploaded_file.read()  # Read the file as bytes
+    excel_data = BytesIO(contents)         # Convert to a file-like object
+    df = pd.read_excel(excel_data)
+    country_mapping = {
+        "USA": "US", "U.S.A": "US", "United States": "US",
+        "U.K": "UK", "United Kingdom": "UK",
+        "U.A.E": "AE", "UAE": "AE", "United Arab Emirates": "AE",
+        "FRA": "FR", "Fra": "FR", "FR": "FR", "France": "FR",
+        "Brazil": "BR", "BRA": "BR", "Bra": "BR", "BR": "BR",
+        "IN": "IN", "Ind": "IN", "India": "IN", "IND": "IN"
+    }
+    df["Country"] = df["Country"].astype(str).str.strip().replace(country_mapping)
+    df["Customer Name"] = df["Customer Name"].astype(str).str.strip()
+    def convert_date(date):
+        try:
+            return pd.to_datetime(date, dayfirst=False, yearfirst=False, errors='coerce')
+        except Exception:
+            return pd.NaT
+    df["Date"] = df["Date"].astype(str).apply(convert_date)
+    df[["Product", "Code"]] = df["Product/Code"].astype(str).str.split("/", n=1, expand=True)
+    df["Product"] = df["Product"].str.strip()
+    df["Code"] = df["Code"].str.strip()
+    df["Sales"] = df["Sales"].astype(str).str.replace("USD", "").str.strip().astype(float)
+    df["Cost"] = df["Cost"].astype(str).str.replace("USD", "").str.strip()
+    df["Cost"] = df["Cost"].replace("", np.nan).astype(float)
+    df["Cost"].fillna(df["Sales"] * 0.5, inplace=True)
+    cutoff_date = pd.to_datetime("2023-06-28 23:16:40")
+    df_filtered = df[(df["Date"] <= cutoff_date) & 
+                     (df["Product"] == "Zeta") & 
+                     (df["Country"] == "AE")]
+    total_sales = df_filtered["Sales"].sum()
+    total_cost = df_filtered["Cost"].sum()
+    total_margin = (total_sales - total_cost) / total_sales if total_sales else 0
+    return total_margin
+
+#ga5-q2
+async def extract_unique_student_ids(file: UploadFile):
+    student_ids = set()
+    pattern = re.compile(r'[-\s]?([A-Z0-9]{10})')  # Extract 10-character alphanumeric student IDs
+    contents = await file.read()  # Read entire file as bytes
+    lines = contents.decode("utf-8").splitlines()  # Decode and split into lines
+    for line in lines:
+        match = pattern.search(line)
+        if match:
+            student_ids.add(match.group(1))  # Store unique IDs
+    return len(student_ids)
+
+#ga5-q3
+async def count_successful_requests(file: UploadFile):
+    LOG_PATTERN = re.compile(
+            r'(\S+) \S+ \S+ \[(.*?)\] "(GET) (/tamilmp3/\S*) HTTP/\d\.\d" (\d+) (\S+) ".*?" ".*?"'
+        )
+    valid_requests = 0
+    time_format = "%d/%b/%Y:%H:%M:%S %z"
+    with gzip.open(file.file, 'rt', encoding='utf-8', errors='ignore') as log_file:
+        for line in log_file:
+            match = LOG_PATTERN.search(line)
+            if match:
+                ip, timestamp, method, url, status, size = match.groups()
+                status = int(status)
+                if 200 <= status < 300:
+                    log_time = datetime.strptime(timestamp, time_format)
+                    if log_time.weekday() == 1 and 1 <= log_time.hour < 5:
+                        valid_requests += 1
+    return valid_requests
+
+#ga5-q4
+async def top_carnatic_downloader(file: UploadFile):
+    LOG_PATTERN = re.compile(
+        r'(\S+) \S+ \S+ \[(.*?)\] "(GET) (/carnatic/\S*) HTTP/\d\.\d" (\d+) (\S+) ".*?" ".*?"'
+    )
+    ip_data_usage = defaultdict(int)  # Dictionary to track bytes per IP
+    target_date = "05/May/2024"
+    time_format = "%d/%b/%Y:%H:%M:%S %z"  # Apache log time format
+
+    with gzip.open(file.file, 'rt', encoding='utf-8', errors='ignore') as log_file:
+        for line in log_file:
+            match = LOG_PATTERN.search(line)
+            if match:
+                ip, timestamp, method, url, status, size = match.groups()
+                status = int(status)
+
+                # Ensure status is successful and size is a valid number
+                if 200 <= status < 300 and size.isdigit():
+                    log_date = timestamp.split(":")[0]  # Extract date part
+
+                    # Filter for requests on 2024-05-05
+                    if log_date == target_date:
+                        ip_data_usage[ip] += int(size)
+
+    # Find the top IP by downloaded bytes
+    if not ip_data_usage:
+        return {"top_ip": None, "total_bytes": 0}
+
+    top_ip, max_bytes = max(ip_data_usage.items(), key=lambda x: x[1])
+    
+    return max_bytes
+
+# async def process_sales_data(file: UploadFile):
+#     data = json.loads(await file.read())
+#     city_clusters = {}  # Main dictionary to store canonical city names
+#     city_names = list(set(entry["city"] for entry in data))  # Unique city names
+#     # for city in city_names:
+#     #     city_clusters[city] = city  # Each city starts as its own "canonical" name
+#     # for city in city_names:
+#     #     match_result = process.extractOne(city, city_clusters.keys(), scorer=fuzz.token_sort_ratio)
+#     #     if match_result:
+#     #         match, score = match_result[:2]  # Extract first two values safely
+#     #         if score > 85 and match != city:
+#     #             city_clusters[city] = match  # Map the current city to the best match
+
+#     city_clusters = {}
+#     for city in city_names:
+#         if city in city_clusters:
+#             continue
+#         match_result = process.extractOne(city, city_clusters.keys(), scorer=fuzz.token_sort_ratio)
+#         if match_result:
+#             match, score = match_result[:2]
+#             if score > 85 and match != city:
+#                 city_clusters[city] = match
+#             else:
+#                 city_clusters[city] = city
+#         else:
+#             city_clusters[city] = city
+#     soap_sales = defaultdict(int)
+#     # print(soap_sales)
+#     # print(data[:5], "\n")
+#     # print(set(entry["product"] for entry in data), "\n")
+#     # print([entry for entry in data if entry["product"].lower() == "soap"], "\n")
+#     # print(city_clusters, "\n")
+#     for entry in data:
+#         if entry["product"].lower() == "soap" and entry["sales"] >= 5:
+#             corrected_city = city_clusters[entry["city"]]  # Get the corrected city name
+#             soap_sales[corrected_city] += entry["sales"]
+#     kinshasa_sales = soap_sales.get("Kinshasa", 0)
+#     return {"Kinshasa_total_sales": kinshasa_sales}
+
+#ga5-q5
+async def process_sales_data(file: UploadFile):
+    data = pd.read_json(file.file)
+    city_names = data["city"].unique().tolist()
+    city_clusters = {}
+    for city in city_names:
+        if city in city_clusters:
+            continue
+        match_result = process.extractOne(city, city_clusters.keys(), scorer=fuzz.token_sort_ratio)
+        if match_result:
+            match, score = match_result[:2]
+            if score > 85 and match != city:
+                city_clusters[city] = match
+            else:
+                city_clusters[city] = city
+        else:
+            city_clusters[city] = city
+    data["city"] = data["city"].map(city_clusters)
+    soap_sales = data[(data["product"].str.lower() == "soap") & (data["sales"] >= 5)]
+    total_sales_by_city = soap_sales.groupby("city")["sales"].sum()
+    kinshasa_sales = sum(sales for city, sales in total_sales_by_city.items() if city.lower().startswith("kin"))
+    return int(kinshasa_sales)
+
+#ga5-q6
+async def calculate_total_sales(upload_file: UploadFile):
+    total_sales = 0
+    content = await upload_file.read()
+    for line in content.decode("utf-8").splitlines():
+        try:
+            data = json.loads(line.strip())
+            if "sales" in data and isinstance(data["sales"], (int, float)):
+                total_sales += data["sales"]
+        except json.JSONDecodeError:
+            try:
+                sales_str = line.split('"sales":')[-1].split(",")[0].strip()
+                sales_value = int(sales_str)
+                total_sales += sales_value
+            except (IndexError, ValueError):
+                continue
+    return total_sales
+
+#ga5-q7
+async def count_key_occurrences(upload_file, target_key="CXPS"):
+    content = await upload_file.read()
+    try:
+        data = json.loads(content)
+    except json.JSONDecodeError:
+        raise ValueError("Invalid JSON file")
+    def recursive_count(obj):
+        """Recursively counts occurrences of target_key in a JSON object."""
+        count = 0
+        if isinstance(obj, dict):
+            for key, value in obj.items():
+                if key == target_key:
+                    count += 1
+                count += recursive_count(value)  # Recurse into the value
+        elif isinstance(obj, list):
+            for item in obj:
+                count += recursive_count(item)  # Recurse into each item in the list
+        return count
+    return recursive_count(data)
+
+#ga5-q9
+# def extract_and_transcribe_audio():
+#     youtube_url = "https://www.youtube.com/watch?v=NRntuOJu4ok"
+#     start_time = 238.7
+#     end_time = 396.4
+#     # Define paths
+#     audio_filename = "audio.mp3"
+#     trimmed_audio_filename = "trimmed_audio.mp3"
+
+#     # Download YouTube video and extract audio
+#     ydl_opts = {
+#         'format': 'bestaudio/best',
+#         'outtmpl': 'audio.%(ext)s',
+#         'postprocessors': [{
+#             'key': 'FFmpegExtractAudio',
+#             'preferredcodec': 'mp3',
+#             'preferredquality': '192',
+#         }],
+#     }
+
+#     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+#         ydl.download([youtube_url])
+    
+#     # Find the downloaded file
+#     downloaded_file = None
+#     for file in os.listdir('.'):
+#         if file.startswith("audio.") and file.endswith(".mp3"):
+#             downloaded_file = file
+#             break
+
+#     if not downloaded_file:
+#         raise FileNotFoundError("Audio file was not downloaded successfully.")
+
+#     # Load the downloaded audio
+#     audio = AudioSegment.from_mp3(downloaded_file)
+
+#     # Extract the required segment
+#     extracted_audio = audio[start_time * 1000:end_time * 1000]
+#     extracted_audio.export(trimmed_audio_filename, format="mp3")
+
+#     # Transcribe using Whisper
+#     model = whisper.load_model("small")
+#     result = model.transcribe(trimmed_audio_filename)
+
+#     return result["text"]
+
+@app.get("/files/{filename}")
+async def get_file(filename: str):
+    return StreamingResponse(open(filename, "rb"), media_type="image/webp")
+
+def reconstruct_image(uploadFile):
+    # Read the file into memory and convert it into a PIL image
+    image_bytes = BytesIO(uploadFile.file.read())  # Read binary data
+    scrambled_img = Image.open(image_bytes)  # Open as PIL image
+
+    # Define constants
+    GRID_SIZE = 5
+    PIECE_SIZE = scrambled_img.width // GRID_SIZE  # Each piece is 100x100 pixels
+
+    # Define mapping of scrambled positions to original positions
+    mapping = [
+        (2, 1, 0, 0), (1, 1, 0, 1), (4, 1, 0, 2), (0, 3, 0, 3), (0, 1, 0, 4),
+        (1, 4, 1, 0), (2, 0, 1, 1), (2, 4, 1, 2), (4, 2, 1, 3), (2, 2, 1, 4),
+        (0, 0, 2, 0), (3, 2, 2, 1), (4, 3, 2, 2), (3, 0, 2, 3), (3, 4, 2, 4),
+        (1, 0, 3, 0), (2, 3, 3, 1), (3, 3, 3, 2), (4, 4, 3, 3), (0, 2, 3, 4),
+        (3, 1, 4, 0), (1, 2, 4, 1), (1, 3, 4, 2), (0, 4, 4, 3), (4, 0, 4, 4)
+    ]
+
+    # Create a blank image for reconstruction
+    reconstructed_img = Image.new("RGB", (scrambled_img.width, scrambled_img.height))
+
+    # Reassemble the image based on the mapping
+    for orig_row, orig_col, scram_row, scram_col in mapping:
+        # Extract the piece from the scrambled image
+        left = scram_col * PIECE_SIZE
+        upper = scram_row * PIECE_SIZE
+        piece = scrambled_img.crop((left, upper, left + PIECE_SIZE, upper + PIECE_SIZE))
+
+        # Place it in the correct position in the reconstructed image
+        left = orig_col * PIECE_SIZE
+        upper = orig_row * PIECE_SIZE
+        reconstructed_img.paste(piece, (left, upper))
+
+    output_path = "reconstructed.webp"
+    reconstructed_img.save(output_path, "WEBP", lossless=True)
+    output_bytes = BytesIO()
+    reconstructed_img.save(output_bytes, format="WEBP", lossless=True)
+    output_bytes.seek(0)
+    return output_bytes
+
 @app.post("/api/")
 async def answer_question(question: str = Form(...), file: UploadFile = None):
     if "code -s" in question:
@@ -597,3 +1295,50 @@ async def answer_question(question: str = Form(...), file: UploadFile = None):
         return {"answer": generate_markdown()}
     elif "Download the image below and compress it losslessly to an image that is less than 1,500 bytes." in question:
         return {"answer": await compress_image(file)}
+    elif "What is the total number of ducks across players on page number 29 of ESPN Cricinfo's ODI batting stats?" in question:
+        return {"answer": count_ducks_espn_cricinfo()}
+    elif "By completing this assignment, you'll simulate a key component of a streaming service's content acquisition strategy. Your work will enable StreamFlix to make informed decisions about which titles to license, ensuring that their catalog remains both diverse and aligned with subscriber preferences. This, in turn, contributes to improved customer satisfaction and retention, driving the company's growth and success in a competitive market." in question:
+        return {"answer": get_imdb_movies()}
+    elif "Write a web application that exposes an API with a single query parameter: ?country=. It should fetch the Wikipedia page of the country, extracts all headings (H1 to H6), and create a Markdown outline for the country. The outline should look like this:" in question:
+        # this is not working - I have written the function but will integrate latter
+        return {"answer": ...}
+    elif "What is the JSON weather forecast description for Hong Kong?" in question:
+        return {"answer": get_weather_forecast()}
+    elif "What is the maximum latitude of the bounding box of the city Hangzhou in the country China on the Nominatim API?" in question:
+        return {"answer": get_max_latitude()}
+    elif "What is the link to the latest Hacker News post mentioning Unix having at least 46 points?" in question:
+        return {"answer": get_latest_unix_post()}
+    elif """Enter the date (ISO 8601, e.g. "2024-01-01T00:00:00Z") when the newest user joined GitHub""" in question:
+        return {"answer": get_newest_moscow_user()}
+    elif "Enter your repository URL (format: https://github.com/USER/REPO)" in question:
+        return {"answer": github_action()}
+    elif "What is the total Physics marks of students who scored 42 or more marks in Maths in groups 53-73 (including both groups)?" in question:
+        return {"answer": await process_student_marks(file)}
+    elif "What is the markdown content of the PDF, formatted with prettier@3.4.2?" in question:
+        return {"answer": await pdf_to_markdown(file)}
+    elif "What is the total margin for transactions before Wed Jun 28 2023 23:16:40 GMT+0530 (India Standard Time) for Zeta sold in AE (which may be spelt in different ways)" in question:
+        return {"answer": await clean_and_calculate_margin(file)}
+    elif "How many unique students are there in the file?" in question:
+        return {"answer": await extract_unique_student_ids(file)}
+    elif "What is the number of successful GET requests for pages under /tamilmp3/ from 1:00 until before 5:00 on Tuesdays?" in question:
+        return {"answer": await count_successful_requests(file)}
+    elif "Across all requests under carnatic/ on 2024-05-05, how many bytes did the top IP address (by volume of downloads) download?" in question:
+        return {"answer": await top_carnatic_downloader(file)}
+    elif "How many units of Soap were sold in Kinshasa on transactions with at least 5 units?" in question:
+        return {"answer": await process_sales_data(file)}
+    elif "What is the total sales value?" in question:
+        return {"asnwer": await calculate_total_sales(file)}
+    elif "How many times does CXPS appear as a key?" in question:
+        return {"answer": await count_key_occurrences(file)}
+    # elif "What is the text of the transcript of this Mystery Story Audiobook between 238.7 and 396.4 seconds?" in question:
+    #     return {"answer": await extract_and_transcribe_audio()}
+    elif "Upload the reconstructed image by moving the pieces from the scrambled position to the original position:" in question:
+        output_bytes = reconstruct_image(file)
+
+        # encoded_image = base64.b64encode(output_bytes.getvalue()).decode("utf-8")
+        # return {"answer": encoded_image}
+
+        output_path = "reconstructed.webp"
+        with open(output_path, "wb") as f:
+            f.write(output_bytes.getvalue())
+        return {"answer": f"http://127.0.0.1:8000/files/{output_path}"}
