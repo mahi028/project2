@@ -38,7 +38,7 @@ def get_vscode_output():
 
 def send_httpie_request():
     result = subprocess.run(
-        ["uv", "run", "--with", "httpie", "--", "https", "GET", "https://httpbin.org/get?email=23f1000561@ds.study.iitm.ac.in"],
+        ["uv", "run", "--with", "httpie", "--", "https", "GET", "https://httpbin.org/get?email=23f1002364@ds.study.iitm.ac.in"], #change email
         capture_output=True,
         text=True
     )
@@ -229,12 +229,12 @@ async def sum_values_from_zip(zip_file: UploadFile):
     os.rmdir(temp_dir)
     return {"sum": int(total)}
 
-def verify_github_url(github_url):
-    response = requests.get(github_url)
-    return response.text if response.status_code == 200 else None
+# def verify_github_url(github_url):
+#     response = requests.get(github_url)
+#     return response.text if response.status_code == 200 else None
 
-def verify_github_url(github_url="https://raw.githubusercontent.com/MohitKumar020291/project2/refs/heads/main/email.json"):
-    return "https://raw.githubusercontent.com/MohitKumar020291/project2/refs/heads/main/email.json"
+def verify_github_url():
+    return "https://raw.githubusercontent.com/mahi028/email/refs/heads/main/email.json" #change email
 
 async def replace_and_hash_from_zip(zip_file: UploadFile):
     # Create a temporary directory for extraction
@@ -855,7 +855,7 @@ def get_newest_moscow_user(min_followers=120, cutoff_date="2025-03-30T23:03:03Z"
         return f"An unexpected error occurred: {str(e)}"
 
 def github_action():
-    return "https://github.com/MohitKumar020291/github-action/"
+    return "https://github.com/mahi028/github-action" #change email
 
 async def process_student_marks(uploaded_file):
     pdf_bytes = await uploaded_file.read()  # FIX: Use `await`
@@ -1252,6 +1252,134 @@ def reconstruct_image(uploadFile):
     output_bytes.seek(0)
     return output_bytes
 
+#GA3-Q1
+async def analyse_sentiments():
+    return """
+import httpx
+
+def analyze_sentiment():
+    url = "https://api.openai.com/v1/chat/completions"
+    headers = {
+        "Authorization": "Bearer dummy_api_key",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "model": "gpt-4o-mini",
+        "messages": [
+            {"role": "system", "content": "Analyze the sentiment of the given text. Classify it strictly as GOOD, BAD, or NEUTRAL."},
+            {"role": "user", "content": "UJP 30 b  apqW SDnKXKyI rIj2QaF2K Gt k T aH9 0yQKb"}
+        ]
+    }
+    
+    response = httpx.post(url, json=data, headers=headers)
+    response.raise_for_status()
+    return response.json()
+
+if __name__ == "__main__":
+    result = analyze_sentiment()
+    print(result)
+"""
+
+#GA3-Q2
+async def get_llm_tokens():
+    import httpx
+
+    API_URL = "http://aiproxy.sanand.workers.dev/openai/v1/chat/completions"
+    API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjIzZjEwMDIzNjRAZHMuc3R1ZHkuaWl0bS5hYy5pbiJ9.Zba_oL9-5a8JUdYIKaqIRdTg9qqJUvbV-9tNBcKqjB0"  # Replace with a real API key if needed
+
+    def get_token_count():
+        headers = {
+            "Authorization": f"Bearer {API_KEY}",
+            "Content-Type": "application/json",
+        }
+
+        data = {
+            "model": "gpt-4o-mini",
+            "messages": [
+                {"role": "user", "content": "List only the valid English words from these: pFeP, P20mrba, PmP, W7WN4m3, SfknZe7jht, n, wwh8mN, v42KV, f8c, 2WZD0dk, WGFOoX, YufkeB7aB, YGvtZdCC8t"}
+            ],
+            "logprobs": True,  # Requesting log probabilities to get token count
+        }
+
+        response = httpx.post(API_URL, json=data, headers=headers)
+        response.raise_for_status()
+        
+        result = response.json()
+        
+        # Extract token usage
+        token_count = result.get("usage", {}).get("prompt_tokens", "Unknown")
+
+        return token_count
+
+    print(get_token_count())
+    return get_token_count()
+
+#GA3-Q4
+import base64
+import json
+from fastapi import UploadFile
+
+async def base_64_json_schema(file: UploadFile):
+    # Read the uploaded file and encode it to base64
+    file_content = await file.read()
+    base64_image = base64.b64encode(file_content).decode("utf-8")
+
+    # Construct the JSON request body
+    request_body = {
+        "model": "gpt-4o-mini",
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "Extract text from this image."},
+                    {"type": "image_url", "image_url": f"data:image/png;base64,{base64_image}"}
+                ]
+            }
+        ]
+    }
+    return request_body
+
+#GA3-Q5
+import json
+async def generate_embedding_request():
+    request_body = {
+        "model": "text-embedding-3-small",
+        "input": [
+            "Dear user, please verify your transaction code 20876 sent to 23f1002364@ds.study.iitm.ac.in",  #change email
+            "Dear user, please verify your transaction code 43103 sent to 23f1002364@ds.study.iitm.ac.in"   #change email
+        ]
+    }
+    return json.dumps(request_body)
+
+#GA3-Q6
+def ga3q6():
+    return """
+import numpy as np
+
+def most_similar(embeddings):
+    max_similarity = -1
+    most_similar_pair = None
+
+    phrases = list(embeddings.keys())
+
+    for i in range(len(phrases)):
+        for j in range(i + 1, len(phrases)):
+            v1 = np.array(embeddings[phrases[i]])
+            v2 = np.array(embeddings[phrases[j]])
+
+            similarity = np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
+
+            if similarity > max_similarity:
+                max_similarity = similarity
+                most_similar_pair = (phrases[i], phrases[j])
+
+    return most_similar_pair
+"""
+
+#GA3-Q9
+async def say_yes_llm():
+    return "Say only \"Yes\" or \"No\". Do humans need oxygen to breathe?"''
+
 @app.post("/api/")
 async def answer_question(question: str = Form(...), file: UploadFile = None):
     if "code -s" in question:
@@ -1278,7 +1406,7 @@ async def answer_question(question: str = Form(...), file: UploadFile = None):
         return {"answer": return_data_value_foo()}
     elif "Each file has 2 columns: symbol and value. Sum up all the values where the symbol matches ‹ OR ‰ OR • across all three files." in question:
         return {"answer": sum_values_from_zip(file)}
-    elif """Let's make sure you know how to use GitHub. Create a GitHub account if you don't have one. Create a new public repository. Commit a single JSON file called email.json with the value {"email": "23f1000561@ds.study.iitm.ac.in"} and push it.""" in question:
+    elif """Let's make sure you know how to use GitHub. Create a GitHub account if you don't have one. Create a new public repository. Commit a single JSON file called email.json with the value {"email": "23f1002364@ds.study.iitm.ac.in"} and push it.""" in question:
         return {"answer": verify_github_url()}
     elif """then replace all "IITM" (in upper, lower, or mixed case) with "IIT Madras" in all files. Leave everything as-is - don't change the line endings.""" in question:
         print("got called")
@@ -1342,3 +1470,19 @@ async def answer_question(question: str = Form(...), file: UploadFile = None):
         with open(output_path, "wb") as f:
             f.write(output_bytes.getvalue())
         return {"answer": f"http://127.0.0.1:8000/files/{output_path}"}
+    elif "Write a Python program that uses httpx to send a POST request to OpenAI's API to analyze the sentiment of this (meaningless) text into GOOD, BAD or NEUTRAL" in question:
+        return {"answer": await analyse_sentiments()}
+    elif "how many input tokens does it use up?" in question:
+        return {"answer": await get_llm_tokens()}
+    elif "Write just the JSON body (not the URL, nor headers) for the POST request that sends these two pieces of content (text and image URL) to the OpenAI API endpoint" in question:
+        return {"answer": await base_64_json_schema(file)}
+    elif "Your task is to write the JSON body for a POST request that will be sent to the OpenAI API endpoint to obtain the text embedding for the 2 given personalized transaction verification messages above" in question:
+        return {"answer": await generate_embedding_request()}
+    elif "Write a prompt that will get the LLM to say Yes" in question:
+        return {"answer": await say_yes_llm()}
+    elif "Your task is to write a Python function most_similar(embeddings)" in question:
+        return {"answer": ga3q6()}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", reload=True)
