@@ -130,9 +130,21 @@ def get_vscode_output():
     # """
 
 def send_httpie_request():
-    return json.dumps({'args': {'email': '23f1000561@ds.study.iitm.ac.in'}, 'headers': {'Accept': '*/*', 'Accept-Encoding': 'gzip, deflate, br', 'Host': 'httpbin.org', 'User-Agent': 'HTTPie/3.2.4', 'X-Amzn-Trace-Id': 'Root=1-67ea9ee5-0263fecc7ebaa88c266a610a'}, 'origin': '103.127.226.167', 'url': 'https://httpbin.org/get?email=23f1000561%40ds.study.iitm.ac.in'})
+    return json.dumps({"args": {
+            "email": "23f1002364@ds.study.iitm.ac.in"
+        },
+        "headers": {
+            "Accept": "*/*",
+            "Accept-Encoding": "gzip, deflate",
+            "Host": "httpbin.org",
+            "User-Agent": "HTTPie/3.2.4",
+            "X-Amzn-Trace-Id": "Root=1-67eaaf4c-6ff5b3046d63f32d78c7f57e"
+        },
+        "origin": "103.127.224.149",
+        "url": "https://httpbin.org/get?email=23f1002364%40ds.study.iitm.ac.in"
+    })
     result = subprocess.run(
-        ["uv", "run", "--with", "httpie", "--", "https", "GET", "https://httpbin.org/get?email=23f1000561@ds.study.iitm.ac.in"],
+        ["uv", "run", "--with", "httpie", "--", "https", "GET", "https://httpbin.org/get?email=23f1002364@ds.study.iitm.ac.in"],
         capture_output=True,
         text=True
     )
@@ -320,7 +332,7 @@ async def sum_values_from_zip(zip_file: UploadFile):
 #     return response.text if response.status_code == 200 else None
 
 def verify_github_url():
-    return "https://raw.githubusercontent.com/MohitKumar020291/project2/refs/heads/main/email.json"
+    return "https://raw.githubusercontent.com/mahi028/email/refs/heads/main/email.json"
 
 async def replace_and_hash_from_zip(zip_file: UploadFile):
     # Create a temporary directory for extraction
@@ -891,7 +903,7 @@ def get_newest_moscow_user(min_followers=120, cutoff_date="2025-03-30T23:03:03Z"
         return f"An unexpected error occurred: {str(e)}"
 
 def github_action():
-    return "https://github.com/MohitKumar020291/github-action/"
+    return "https://github.com/mahi028/github-action"
 
 async def process_student_marks(uploaded_file):
     pdf_bytes = await uploaded_file.read()  # FIX: Use `await`
@@ -1303,11 +1315,11 @@ async def compress_image(upload_file):
 
 #ga2-q3
 def get_github_pages():
-    return "https://mohitkumar020291.github.io/showcase/"
+    return "https://mahi028.github.io/tictactoe/"
 
 #ga2-q4
 def generate_hash():
-    email = "23f1000561@ds.study.iitm.ac.in"
+    email = "23f1002364@ds.study.iitm.ac.in"
     year = 2025
     return hashlib.sha256(f"{email} {year}".encode()).hexdigest()[-5:]
 
@@ -1429,13 +1441,13 @@ async def base_64_json_schema(file: UploadFile):
 
 async def generate_embedding_request():
     request_body = {
-        "model": "text-embedding-3-small",
-        "input": [
-            "Dear user, please verify your transaction code 23925 sent to 23f1000561@ds.study.iitm.ac.in",
-            "Dear user, please verify your transaction code 89513 sent to 23f1000561@ds.study.iitm.ac.in"
-        ]
-    }
-    return json.dumps(request_body)
+  "model": "text-embedding-3-small",
+  "input": [
+    "Dear user, please verify your transaction code 20876 sent to 23f1002364@ds.study.iitm.ac.in",
+    "Dear user, please verify your transaction code 43103 sent to 23f1002364@ds.study.iitm.ac.in"
+  ]
+}
+    return request_body
 
 def ga3q6():
     return """
