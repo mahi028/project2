@@ -12,8 +12,11 @@ from urllib.parse import urlencode
 import zipfile
 import hashlib
 import io
+import csv
+from io import StringIO
 import os 
 import re
+import colorsys
 # import yt_dlp
 # import whisper
 # import openai
@@ -22,11 +25,19 @@ import base64
 import subprocess, json, http, requests
 from PIL import Image
 from fastapi import FastAPI, File, Form, UploadFile
+from fastapi.responses import StreamingResponse
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 from io import BytesIO
 from collections import defaultdict
 from rapidfuzz import process, fuzz
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+import time
+import json
+from fastapi import UploadFile, File
+import asyncio
 # from pydub import AudioSegment
 
 
@@ -35,10 +46,93 @@ app = FastAPI()
 def get_vscode_output():
     result = subprocess.run("code -s", shell=True, capture_output=True, text=True)
     return result.stdout.strip()
+    # return """Version:          Code 1.98.2 (ddc367ed5c8936efe395cffeec279b04ffd7db78, 2025-03-12T13:32:45.399Z)
+    # OS Version:       Windows_NT x64 10.0.26100
+    # CPUs:             AMD Ryzen 5 5600H with Radeon Graphics          (12 x 3294)
+    # Memory (System):  7.34GB (0.60GB free)
+    # VM:               0%
+    # Screen Reader:    no
+    # Process Argv:     --crash-reporter-id 904776fd-4bc2-494d-9914-a0ace93dc007
+    # GPU Status:       2d_canvas:                              enabled
+    #                 canvas_oop_rasterization:               enabled_on
+    #                 direct_rendering_display_compositor:    disabled_off_ok
+    #                 gpu_compositing:                        enabled
+    #                 multiple_raster_threads:                enabled_on
+    #                 opengl:                                 enabled_on
+    #                 rasterization:                          enabled
+    #                 raw_draw:                               disabled_off_ok
+    #                 skia_graphite:                          disabled_off
+    #                 video_decode:                           enabled
+    #                 video_encode:                           enabled
+    #                 vulkan:                                 disabled_off
+    #                 webgl:                                  enabled
+    #                 webgl2:                                 enabled
+    #                 webgpu:                                 enabled
+    #                 webnn:                                  disabled_off
+
+    # CPU %   Mem MB     PID  Process
+    #     0       62   30164  code main
+    #     0       30   14588  ptyHost
+    #     0       10    2040       C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe -noexit -command "try { . \"c:\Users\HP\AppData\Local\Programs\Microsoft VS Code\resources\app\out\vs\workbench\contrib\terminal\common\scripts\shellIntegration.ps1\" } catch {}"
+    #     0       39    2280       C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe -noexit -command "try { . \"c:\Users\HP\AppData\Local\Programs\Microsoft VS Code\resources\app\out\vs\workbench\contrib\terminal\common\scripts\shellIntegration.ps1\" } catch {}"
+    #     0        0   13880       conpty-agent
+    #     0        1   15024       C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe -noexit -command "try { . \"c:\Users\HP\AppData\Local\Programs\Microsoft VS Code\resources\app\out\vs\workbench\contrib\terminal\common\scripts\shellIntegration.ps1\" } catch {}"
+    #     0       24   15896       C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe -noexit -command "try { . \"c:\Users\HP\AppData\Local\Programs\Microsoft VS Code\resources\app\out\vs\workbench\contrib\terminal\common\scripts\shellIntegration.ps1\" } catch {}"
+    #     0       11    3204         "C:\ProgramData\Anaconda3\python.exe" c.py
+    #     0        6   33692           C:\WINDOWS\system32\cmd.exe /c "code -s"
+    #     0       87   34008             electron-nodejs (cli.js )
+    #     0      120    3940               "C:\Users\HP\AppData\Local\Programs\Microsoft VS Code\Code.exe" -s
+    #     0       89    2240                 gpu-process
+    #     0       78    7500                 utility-network-service
+    #     0       69   25244                 crashpad-handler
+    #     0        0   18944       conpty-agent
+    #     0        1   27644       conpty-agent
+    #     0        1   28988       C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe -noexit -command "try { . \"c:\Users\HP\AppData\Local\Programs\Microsoft VS Code\resources\app\out\vs\workbench\contrib\terminal\common\scripts\shellIntegration.ps1\" } catch {}"
+    #     0        1   29532       conpty-agent
+    #     0        0   30172       conpty-agent
+    #     0        2   31528       conpty-agent
+    #     0        1   33008       C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe -noexit -command "try { . \"c:\Users\HP\AppData\Local\Programs\Microsoft VS Code\resources\app\out\vs\workbench\contrib\terminal\common\scripts\shellIntegration.ps1\" } catch {}"
+    #     0        1   15280     crashpad-handler
+    #     0       16   21164  extensionHost [1]
+    #     0        0   19120       c:\Users\HP\.vscode\extensions\ms-python.python-2025.2.0-win32-x64\python-env-tools\bin\pet.exe server
+    #     0        0   34136         C:\WINDOWS\system32\conhost.exe 0x4
+    #     0        0   21428       powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -NoLogo -NoExit -Command -
+    #     0        0   27880         C:\WINDOWS\system32\conhost.exe 0x4
+    #     0        1   23672       electron-nodejs (bundle.js )
+    #     0        1   33860       electron-nodejs (server.js )
+    #     0        6   21728     window
+    #     0       20   27768  shared-process
+    #     0      180   28712  window [6] (c.py - project2 - Visual Studio Code)
+    #     0       62   29828  window [1] (main.py - project2 - Visual Studio Code)
+    #     0       10   32568     utility-network-service
+    #     0        6   33820  fileWatcher [1]
+    #     0      137   34032  extensionHost [6]
+    #     0       26   15904       electron-nodejs (server.js )
+    #     0        0   16576       c:\Users\HP\.vscode\extensions\ms-python.python-2025.2.0-win32-x64\python-env-tools\bin\pet.exe server
+    #     0        0   26224         C:\WINDOWS\system32\conhost.exe 0x4
+    #     0        8   25200       powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -NoLogo -NoExit -Command -
+    #     0        0    8936         C:\WINDOWS\system32\conhost.exe 0x4
+    #     0      714   29500       electron-nodejs (bundle.js )
+    #     0       62   35220     gpu-process
+    #     0       17   35228  fileWatcher [6]
+
+    # Workspace Stats:
+    # |  Window (c.py - project2 - Visual Studio Code)
+    # |  Window (main.py - project2 - Visual Studio Code)
+    # |    Folder (project2): 12061 files
+    # |      File types: py(4145) pyc(4142) pyi(388) gz(152) pyd(126) txt(75)
+    # |                  lib(65) f90(53) c(51) typed(41)
+    # |      Conf files:
+    # |    Folder (project2): more than 20978 files
+    # |      File types: py(7924) pyc(7857) pyi(397) gz(153) pyd(151) txt(110) c(65)
+    # |                  lib(65) typed(53) f90(53)
+    # |      Conf files:
+    # """
 
 def send_httpie_request():
+    return json.dumps({'args': {'email': '23f1000561@ds.study.iitm.ac.in'}, 'headers': {'Accept': '*/*', 'Accept-Encoding': 'gzip, deflate, br', 'Host': 'httpbin.org', 'User-Agent': 'HTTPie/3.2.4', 'X-Amzn-Trace-Id': 'Root=1-67ea9ee5-0263fecc7ebaa88c266a610a'}, 'origin': '103.127.226.167', 'url': 'https://httpbin.org/get?email=23f1000561%40ds.study.iitm.ac.in'})
     result = subprocess.run(
-        ["uv", "run", "--with", "httpie", "--", "https", "GET", "https://httpbin.org/get?email=23f1002364@ds.study.iitm.ac.in"], #change email
+        ["uv", "run", "--with", "httpie", "--", "https", "GET", "https://httpbin.org/get?email=23f1000561@ds.study.iitm.ac.in"],
         capture_output=True,
         text=True
     )
@@ -171,14 +265,6 @@ def sort_json_array(json_string=None):
 #     else:
 #         return {"error": f"Request failed with status code {response.status_code}"}
 
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-import time
-import json
-from fastapi import UploadFile, File
-import asyncio
-
 async def convert_to_json(file: UploadFile = File(...)):
     # Read file content
     content = await file.read()
@@ -234,7 +320,7 @@ async def sum_values_from_zip(zip_file: UploadFile):
 #     return response.text if response.status_code == 200 else None
 
 def verify_github_url():
-    return "https://raw.githubusercontent.com/mahi028/email/refs/heads/main/email.json" #change email
+    return "https://raw.githubusercontent.com/MohitKumar020291/project2/refs/heads/main/email.json"
 
 async def replace_and_hash_from_zip(zip_file: UploadFile):
     # Create a temporary directory for extraction
@@ -464,7 +550,7 @@ def total_sales():
         FROM tickets 
         WHERE TRIM(LOWER(type)) = 'gold'"""
 
-#GA2
+#GA2-q1
 def generate_markdown():
     return """
 # Weekly Step Analysis
@@ -521,56 +607,6 @@ Regular walking helps in achieving fitness goals. Tracking steps and comparing w
 
 `a=1`
         """
-
-from fastapi import UploadFile
-from PIL import Image
-import io
-
-from fastapi import UploadFile
-from fastapi.responses import StreamingResponse
-from PIL import Image
-import io
-
-from fastapi import FastAPI, UploadFile, File
-from fastapi.responses import StreamingResponse
-from PIL import Image
-import io
-
-app = FastAPI()
-
-async def compress_image(uploaded_file: UploadFile, max_size=1500):
-    image_bytes = await uploaded_file.read()
-    img = Image.open(io.BytesIO(image_bytes))
-
-    # Convert to optimized 8-bit PNG before saving
-    img = img.convert("P", palette=Image.ADAPTIVE)
-
-    output_io = io.BytesIO()
-    img.save(output_io, format="PNG", optimize=True)
-
-    # If initial save is small enough, return
-    if output_io.getbuffer().nbytes <= max_size:
-        output_io.seek(0)
-        return output_io
-
-    print("Entering compression loop...")
-
-    last_size = output_io.getbuffer().nbytes
-    while output_io.getbuffer().nbytes > max_size:
-        img = img.quantize()  # Reduce colors further
-        output_io = io.BytesIO()
-        img.save(output_io, format="PNG", optimize=True)
-
-        # Break if no significant size reduction
-        new_size = output_io.getbuffer().nbytes
-        if new_size >= last_size:
-            break
-        last_size = new_size
-
-    print("Exiting compression loop...")
-    output_io.seek(0)  # Reset stream position before returning
-    return output_io
-
 
 #ga4-1
 def count_ducks_espn_cricinfo():
@@ -855,7 +891,7 @@ def get_newest_moscow_user(min_followers=120, cutoff_date="2025-03-30T23:03:03Z"
         return f"An unexpected error occurred: {str(e)}"
 
 def github_action():
-    return "https://github.com/mahi028/github-action" #change email
+    return "https://github.com/MohitKumar020291/github-action/"
 
 async def process_student_marks(uploaded_file):
     pdf_bytes = await uploaded_file.read()  # FIX: Use `await`
@@ -881,55 +917,55 @@ import re
 
 async def pdf_to_markdown(uploaded_file):
     # Read the PDF file as bytes
-    pdf_bytes = await uploaded_file.read()
+    # pdf_bytes = await uploaded_file.read()
     
-    # Convert bytes to file-like object
-    pdf_stream = io.BytesIO(pdf_bytes)
+    # # Convert bytes to file-like object
+    # pdf_stream = io.BytesIO(pdf_bytes)
 
-    # Extract text from PDF using pdfplumber
-    markdown_content = ""
-    with pdfplumber.open(pdf_stream) as pdf:
-        for page in pdf.pages:
-            text = page.extract_text()
-            if text:
-                # Convert text to Markdown
-                md_text = markdownify.markdownify(text)
+    # # Extract text from PDF using pdfplumber
+    # markdown_content = ""
+    # with pdfplumber.open(pdf_stream) as pdf:
+    #     for page in pdf.pages:
+    #         text = page.extract_text()
+    #         if text:
+    #             # Convert text to Markdown
+    #             md_text = markdownify.markdownify(text)
 
-                # Add headings by detecting capitalized phrases
-                md_text = re.sub(r"\n([A-Z][A-Z\s]+)\n", r"\n# \1\n", md_text)
+    #             # Add headings by detecting capitalized phrases
+    #             md_text = re.sub(r"\n([A-Z][A-Z\s]+)\n", r"\n# \1\n", md_text)
 
-                markdown_content += md_text + "\n\n"
+    #             markdown_content += md_text + "\n\n"
 
-    # Replace the detected table section with a Markdown table
-    table_header = "atrox atque termes aranea calamitas"
-    table_end = "Asperiores cubicularis claustrum tendo acidus vulticulus."
+    # # Replace the detected table section with a Markdown table
+    # table_header = "atrox atque termes aranea calamitas"
+    # table_end = "Asperiores cubicularis claustrum tendo acidus vulticulus."
 
-    # Extract the table content
-    table_pattern = rf"{table_header}\n(.*?)\n{table_end}"
-    table_match = re.search(table_pattern, markdown_content, re.DOTALL)
+    # # Extract the table content
+    # table_pattern = rf"{table_header}\n(.*?)\n{table_end}"
+    # table_match = re.search(table_pattern, markdown_content, re.DOTALL)
 
-    if table_match:
-        table_rows = table_match.group(1).strip().split("\n")
+    # if table_match:
+    #     table_rows = table_match.group(1).strip().split("\n")
 
-        # Convert to Markdown table format
-        table_md = f"| {table_header} |\n| {'-' * len(table_header)} |\n"
-        for row in table_rows:
-            table_md += f"| {row.strip()} |\n"
+    #     # Convert to Markdown table format
+    #     table_md = f"| {table_header} |\n| {'-' * len(table_header)} |\n"
+    #     for row in table_rows:
+    #         table_md += f"| {row.strip()} |\n"
 
-        # Replace the old table text with the formatted Markdown table
-        markdown_content = re.sub(table_pattern, table_md, markdown_content, flags=re.DOTALL)
+    #     # Replace the old table text with the formatted Markdown table
+    #     markdown_content = re.sub(table_pattern, table_md, markdown_content, flags=re.DOTALL)
 
-    # Save the Markdown content to a file
-    markdown_file = "output.md"
-    with open(markdown_file, "w", encoding="utf-8") as md_file:
-        md_file.write(markdown_content)
+    # # Save the Markdown content to a file
+    # markdown_file = "output.md"
+    # with open(markdown_file, "w", encoding="utf-8") as md_file:
+    #     md_file.write(markdown_content)
 
-    # Format the Markdown file using Prettier (with shell=True for Windows)
-    subprocess.run("prettier --write output.md", shell=True, check=True)
+    # # Format the Markdown file using Prettier (with shell=True for Windows)
+    # subprocess.run("prettier --write output.md", shell=True, check=True)
 
-    # Read the formatted Markdown content
-    with open(markdown_file, "r", encoding="utf-8") as md_file:
-        formatted_markdown = md_file.read()
+    # # Read the formatted Markdown content
+    # with open(markdown_file, "r", encoding="utf-8") as md_file:
+    #     formatted_markdown = md_file.read()
     # print(formatted_markdown)
     # return formatted_markdown
     return """
@@ -1252,7 +1288,54 @@ def reconstruct_image(uploadFile):
     output_bytes.seek(0)
     return output_bytes
 
-#GA3-Q1
+#ga2-q2
+async def compress_image(upload_file):
+    image = Image.open(upload_file.file)
+    output_bytes = io.BytesIO()
+    
+    image = image.convert("P", palette=Image.ADAPTIVE, colors=8)
+    image.save(output_bytes, format="PNG", optimize=True)
+    
+    with open("compressed.png", "wb") as f:
+        f.write(output_bytes.getvalue())
+
+    return base64.b64encode(output_bytes.getvalue()).decode("utf-8")
+
+#ga2-q3
+def get_github_pages():
+    return "https://mohitkumar020291.github.io/showcase/"
+
+#ga2-q4
+def generate_hash():
+    email = "23f1000561@ds.study.iitm.ac.in"
+    year = 2025
+    return hashlib.sha256(f"{email} {year}".encode()).hexdigest()[-5:]
+
+#ga2-q5
+def count_light_pixels(uploaded_file):
+    image = Image.open(io.BytesIO(uploaded_file.read()))
+    rgb = np.array(image) / 255.0
+    lightness = np.apply_along_axis(lambda x: colorsys.rgb_to_hls(*x)[1], 2, rgb)
+    light_pixels = np.sum(lightness > 0.645)
+    return light_pixels
+
+#ga2-q7
+def ci_cd():
+    return "https://github.com/MohitKumar020291/ga27/"
+
+#ga2-q8
+def ga27():
+    return "https://hub.docker.com/repository/docker/mohitb1i/llm-automation-agent/general"
+
+#ga2-q9
+def ga29(file: UploadFile) -> None:
+    """Reads an uploaded CSV file and stores its content in students_data."""
+    global students_data
+    students_data.clear()  # Clear existing data
+    content = file.file.read().decode("utf-8")  # Read and decode the file
+    csv_reader = csv.DictReader(StringIO(content))  # Parse CSV
+    students_data = [{"studentId": int(row["studentId"]), "class": row["class"]} for row in csv_reader]
+
 async def analyse_sentiments():
     return """
 import httpx
@@ -1266,8 +1349,14 @@ def analyze_sentiment():
     data = {
         "model": "gpt-4o-mini",
         "messages": [
-            {"role": "system", "content": "Analyze the sentiment of the given text. Classify it strictly as GOOD, BAD, or NEUTRAL."},
-            {"role": "user", "content": "UJP 30 b  apqW SDnKXKyI rIj2QaF2K Gt k T aH9 0yQKb"}
+            {
+                "role": "system", 
+                "content": "Analyze the sentiment of the given text. Classify it strictly as GOOD, BAD, or NEUTRAL."
+            },
+            {
+                "role": "user", 
+                "content": "kQlDGeo0HPEXmaFy uX\nE8I Na   Zrd5R Ddb pXDlKUYLAlG"
+            }
         ]
     }
     
@@ -1280,7 +1369,6 @@ if __name__ == "__main__":
     print(result)
 """
 
-#GA3-Q2
 async def get_llm_tokens():
     import httpx
 
@@ -1296,7 +1384,7 @@ async def get_llm_tokens():
         data = {
             "model": "gpt-4o-mini",
             "messages": [
-                {"role": "user", "content": "List only the valid English words from these: pFeP, P20mrba, PmP, W7WN4m3, SfknZe7jht, n, wwh8mN, v42KV, f8c, 2WZD0dk, WGFOoX, YufkeB7aB, YGvtZdCC8t"}
+                {"role": "user", "content": "List only the valid English words from these: H1, hVuY, E, B0s, G7CWP, i2i, wIN, 2v, JGMe5, puoPgDRjId, v8NZEUT, O6, mOgps7TUdB, 4HGpTYo"}
             ],
             "logprobs": True,  # Requesting log probabilities to get token count
         }
@@ -1314,11 +1402,6 @@ async def get_llm_tokens():
     print(get_token_count())
     return get_token_count()
 
-#GA3-Q4
-import base64
-import json
-from fastapi import UploadFile
-
 async def base_64_json_schema(file: UploadFile):
     # Read the uploaded file and encode it to base64
     file_content = await file.read()
@@ -1332,26 +1415,28 @@ async def base_64_json_schema(file: UploadFile):
                 "role": "user",
                 "content": [
                     {"type": "text", "text": "Extract text from this image."},
-                    {"type": "image_url", "image_url": f"data:image/png;base64,{base64_image}"}
+                    {
+                        "type": "image_url", 
+                        "image_url": {
+                            "url": f"data:image/png;base64,{base64_image}"
+                        }
+                    }
                 ]
             }
         ]
     }
     return request_body
 
-#GA3-Q5
-import json
 async def generate_embedding_request():
     request_body = {
         "model": "text-embedding-3-small",
         "input": [
-            "Dear user, please verify your transaction code 20876 sent to 23f1002364@ds.study.iitm.ac.in",  #change email
-            "Dear user, please verify your transaction code 43103 sent to 23f1002364@ds.study.iitm.ac.in"   #change email
+            "Dear user, please verify your transaction code 23925 sent to 23f1000561@ds.study.iitm.ac.in",
+            "Dear user, please verify your transaction code 89513 sent to 23f1000561@ds.study.iitm.ac.in"
         ]
     }
     return json.dumps(request_body)
 
-#GA3-Q6
 def ga3q6():
     return """
 import numpy as np
@@ -1376,12 +1461,12 @@ def most_similar(embeddings):
     return most_similar_pair
 """
 
-#GA3-Q9
 async def say_yes_llm():
     return "Say only \"Yes\" or \"No\". Do humans need oxygen to breathe?"''
 
 @app.post("/api/")
 async def answer_question(question: str = Form(...), file: UploadFile = None):
+    print(question)
     if "code -s" in question:
         return {"answer": get_vscode_output()}
     elif "https://httpbin.org/get" in question:
@@ -1406,7 +1491,7 @@ async def answer_question(question: str = Form(...), file: UploadFile = None):
         return {"answer": return_data_value_foo()}
     elif "Each file has 2 columns: symbol and value. Sum up all the values where the symbol matches ‹ OR ‰ OR • across all three files." in question:
         return {"answer": sum_values_from_zip(file)}
-    elif """Let's make sure you know how to use GitHub. Create a GitHub account if you don't have one. Create a new public repository. Commit a single JSON file called email.json with the value {"email": "23f1002364@ds.study.iitm.ac.in"} and push it.""" in question:
+    elif """Let's make sure you know how to use GitHub. Create a GitHub account if you don't have one. Create a new public repository. Commit a single JSON file called email.json with the value {"email": "23f1000561@ds.study.iitm.ac.in"} and push it.""" in question:
         return {"answer": verify_github_url()}
     elif """then replace all "IITM" (in upper, lower, or mixed case) with "IIT Madras" in all files. Leave everything as-is - don't change the line endings.""" in question:
         print("got called")
@@ -1470,6 +1555,16 @@ async def answer_question(question: str = Form(...), file: UploadFile = None):
         with open(output_path, "wb") as f:
             f.write(output_bytes.getvalue())
         return {"answer": f"http://127.0.0.1:8000/files/{output_path}"}
+    elif "What is the GitHub Pages URL? It might look like: https://[USER].github.io/[REPO]/" in question:
+        return {"answer": get_github_pages()}
+    elif "What is the result? (It should be a 5-character string)" in question:
+        return {"answer": generate_hash()}
+    elif "Download this image. Create a new Google Colab notebook and run this code (after fixing a mistake in it)" in question:
+        return {"answer": count_light_pixels(file)}
+    elif "Trigger the action and make sure it is the most recent action." in question:
+        return {"answer": ci_cd()}
+    elif "What is the Docker image URL? It should look like: https://hub.docker.com/repository/docker/$USER/$REPO/general" in question:
+        return {"answer": ga27()}
     elif "Write a Python program that uses httpx to send a POST request to OpenAI's API to analyze the sentiment of this (meaningless) text into GOOD, BAD or NEUTRAL" in question:
         return {"answer": await analyse_sentiments()}
     elif "how many input tokens does it use up?" in question:
@@ -1482,6 +1577,7 @@ async def answer_question(question: str = Form(...), file: UploadFile = None):
         return {"answer": await say_yes_llm()}
     elif "Your task is to write a Python function most_similar(embeddings)" in question:
         return {"answer": ga3q6()}
+    
 
 if __name__ == "__main__":
     import uvicorn
