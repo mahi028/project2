@@ -38,7 +38,7 @@ def get_vscode_output():
 
 def send_httpie_request():
     result = subprocess.run(
-        ["uv", "run", "--with", "httpie", "--", "https", "GET", "https://httpbin.org/get?email=23f1002364@ds.study.iitm.ac.in"],
+        ["uv", "run", "--with", "httpie", "--", "https", "GET", "https://httpbin.org/get?email=23f1002364@ds.study.iitm.ac.in"], #change email
         capture_output=True,
         text=True
     )
@@ -234,7 +234,7 @@ async def sum_values_from_zip(zip_file: UploadFile):
 #     return response.text if response.status_code == 200 else None
 
 def verify_github_url():
-    return "https://raw.githubusercontent.com/mahi028/email/refs/heads/main/email.json"
+    return "https://raw.githubusercontent.com/mahi028/email/refs/heads/main/email.json" #change email
 
 async def replace_and_hash_from_zip(zip_file: UploadFile):
     # Create a temporary directory for extraction
@@ -855,7 +855,7 @@ def get_newest_moscow_user(min_followers=120, cutoff_date="2025-03-30T23:03:03Z"
         return f"An unexpected error occurred: {str(e)}"
 
 def github_action():
-    return "https://github.com/mahi028/github-action"
+    return "https://github.com/mahi028/github-action" #change email
 
 async def process_student_marks(uploaded_file):
     pdf_bytes = await uploaded_file.read()  # FIX: Use `await`
@@ -1345,8 +1345,8 @@ async def generate_embedding_request():
     request_body = {
         "model": "text-embedding-3-small",
         "input": [
-            "Dear user, please verify your transaction code 20876 sent to 23f1002364@ds.study.iitm.ac.in",
-            "Dear user, please verify your transaction code 43103 sent to 23f1002364@ds.study.iitm.ac.in"
+            "Dear user, please verify your transaction code 20876 sent to 23f1002364@ds.study.iitm.ac.in",  #change email
+            "Dear user, please verify your transaction code 43103 sent to 23f1002364@ds.study.iitm.ac.in"   #change email
         ]
     }
     return json.dumps(request_body)
