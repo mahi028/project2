@@ -1464,7 +1464,11 @@ def most_similar(embeddings):
 async def say_yes_llm():
     return "Say only \"Yes\" or \"No\". Do humans need oxygen to breathe?"''
 
-@app.post("/api/")
+@app.get("/")
+def index():
+    return {"message": "Welcome to the API"}
+
+@app.post("/api")
 async def answer_question(question: str = Form(...), file: UploadFile = None):
     print(question)
     if "code -s" in question:
@@ -1578,7 +1582,3 @@ async def answer_question(question: str = Form(...), file: UploadFile = None):
     elif "Your task is to write a Python function most_similar(embeddings)" in question:
         return {"answer": ga3q6()}
     
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", reload=True)
